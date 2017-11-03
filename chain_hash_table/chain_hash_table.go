@@ -1,6 +1,6 @@
 // Chain-block representation of a HashTable or Set.
 
-package main
+package chain_hash_table
 
 import (
     "fmt"
@@ -11,33 +11,14 @@ import (
 // on to the chain already there.
 
 type chain struct {
-    val  int
+    val  float64
     next *chain
 }
 
 // Store an array of 
-type HashTable []*chain;
+type ChainHashTable []*chain;
 
-func main() {
-    // A prime number is used as the length of the array for greater efficiency.
-    // Increasing this number decreases collision frequency but increases
-    // memory usage.
-    size := 157
-    h := make(HashTable, size);
-
-    // Inserting a bunch of data.
-    for i := 0; i < 1000; i++ {
-        h.add(i)
-    }
-
-    //h.add(25)
-    //h.add(29)
-    fmt.Println(h.contains(1001)) // false
-    fmt.Println(h.contains(25))   // true
-    fmt.Println(h)
-}
-
-func (h HashTable) String() string {
+func (h ChainHashTable) String() string {
     // this is basically the toString method
 
     s := "";
@@ -48,13 +29,13 @@ func (h HashTable) String() string {
             if i != len(h) && first {
                 s += "\n" // This could also be s += ", " to keep it on one line.
             }
-            s += fmt.Sprintf("%d", (*v).val)
+            s += fmt.Sprintf("%.3f", (*v).val)
             if !first { first = true }
             if (*v).next != nil {
                 data := (*v).next
                 for ; data != nil; data = (*data).next {
                     // Use chains of arrows to denote data chains.
-                    s += fmt.Sprintf(" -> %d", (*data).val)
+                    s += fmt.Sprintf(" -> %.3f", (*data).val)
                 }
             }
         }
@@ -63,15 +44,15 @@ func (h HashTable) String() string {
     return s
 }
 
-func (h *HashTable) add(val int) {
+func (h *ChainHashTable) Add(val float64) {
     // Adds a value to the HashTable
 
     // Perhaps if a lot of duplicate calls would be made, it would make
     // sense to first check this. This could be commented out if most
     // values would be unique.
-    if h.contains(val) { return }
+    if h.Contains(val) { return }
 
-    location := h.hashFunc(val)
+    location := h.HashFunc(val)
     data := (*h)[location]
     // If there isn't already a chain started at the hash location, start one.
     if data == nil {
@@ -93,11 +74,43 @@ func (h *HashTable) add(val int) {
     (*last_chain).next = &chain{val, nil}
 }
 
+func (h *ChainHashTable) Remove(val float64) error {
+    // Removes a value from the set
 
-func (h *HashTable) contains(val int) bool {
+    if (!h.Contains(val)) {
+        // If it isn't in there, raise an error
+        err := fmt.Errorf("Set: Value %f not in set!", val)
+        return err
+    }
+
+    // First check to see if it is in the first position.
+    location := h.HashFunc(val)
+    data := (*h)[location]
+    if (*data).val == val {
+        // If it is, change the actual HashTable slice index.
+        (*h)[location] = (*h)[location].next
+        return nil
+    }
+
+    // If it isn't, go through the chain at that location
+    var last *chain
+    for (*data).val != val {
+        last = data
+        data = (*data).next
+    }
+
+    // Once it is found, change the pointer that was going to val to
+    // the pointer that val is pointing to.
+    // a -> b -> c becomes a -> c (assuming we are looking for b)
+
+    last.next = data.next
+    return nil
+}
+
+func (h *ChainHashTable) Contains(val float64) bool {
     // checks the HashTable to see if a value is present.
 
-    location := h.hashFunc(val)
+    location := h.HashFunc(val)
     data := (*h)[location]
     for data != nil {
         if (*data).val == val {
@@ -109,15 +122,17 @@ func (h *HashTable) contains(val int) bool {
     return false
 }
 
-func (h *HashTable) hashFunc(val int) int {
+func (h *ChainHashTable) HashFunc(val float64) int {
     // This can be modified and as long as the values are fit to the length of
     // the HashTable array. This implementation sums up every two digits.
 
-    var sum int
-    curr := val
-    for curr > 1 {
-        sum += curr % 100
+    var sum float64
+    curr := int(val)
+    for curr >= 1 {
+        sum += float64(curr)
         curr /= 100
     }
-    return sum % cap(*h)
+    s := 1.0
+    if val < 0 { s = -1.0 }
+    return int(((sum * s) + 1) * 96821) % cap(*h)
 }
